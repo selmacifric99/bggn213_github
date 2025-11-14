@@ -1,0 +1,175 @@
+---
+title: "Class 05: Data Visualization with GGPLOT"
+author: "Selma Cifric (PID A69042976)"
+format: pdf
+---
+
+# Class 05 notes
+
+## Intro to ggplot2
+
+Since I already have ggplot2 installed from before, first, we load ggplot2 and try to plot for cars data. If `library(ggplot2)` returned an error indicating I don't have this package installed, I would type `install.packages("ggplot2")` into my console, not my script, to install it. Then, I'd call on it, in my script as I'm doing so here, with `library(ggplot2)` function.
+
+```{r}
+
+library(ggplot2)
+
+ggplot(cars)
+
+```
+This yields a grey, empty plot. We need to specify the x,y values and utilize `aes()` function to set the aesthetics for our data visualization.
+
+```{r}
+ggplot(cars) + 
+  aes(x=speed, y=dist)
+```
+Now, we need to add the data points to our graph by using `geom_point()` function. We use + sign to add to our plot. We can also play with `geom_point()` and `geom_smooth()`functions, first one displaying the scatter points and second one adding a linear model to it.
+
+```{r}
+ggplot(cars) + 
+  aes(x=speed, y=dist) +
+  geom_point()
+```
+
+```{r}
+ggplot(cars) + 
+  aes(x=speed, y=dist) +
+  geom_point() +
+  geom_smooth(method="lm", se=FALSE)
+```
+
+
+### Adding more plot easthetics through `aes()` function
+
+In this example, we are loading the results of a differential expression analysis where a new anti-viral drug is being tested
+
+```{r}
+url <- "https://bioboot.github.io/bimm143_S20/class-material/up_down_expression.txt"
+genes <- read.delim(url)
+head(genes)
+
+```
+> Q1 and Q2. How many genes are in this wee dataset and how many columns?
+There are `nrow(genes)` and `ncol(genes)`in this dataset
+
+```{r}
+nrow(genes)
+ncol(genes)
+```
+
+
+>Q3. How many "up" regulated genes are there?
+
+```{r}
+sum(genes$State == "up")
+```
+>Q4. What fraction of total genes are up-regulated (using 2 sf)?
+
+
+```{r}
+table(genes$State)
+```
+Using `round()` function, we can round the result at 2sf. 
+
+```{r}
+percent_genes <- round(table(genes$State)/nrow(genes) * 100, 2)
+percent_genes
+```
+Our answer is 2.44% genes in our data set are up-regulated.
+
+Now, we want to add more aesthetics to our data plot. Condition1 is on x-axis, Condition2 is on y-axis and we are looking at column State (up,down,unchanged) and how it's behaving in these conditions.
+
+```{r}
+ggplot(genes) +
+  aes(Condition1, Condition2, col=State) +
+  geom_point()
+```
+
+If we wanted the data colored differently, we would add `scale_color_manual(values=c(" ", " "," "))` argument. Additionally, we will assign this plot to an object 'p' so we can easily add to it without copy-pasting it every time in a new chunk.
+
+```{r}
+p <- ggplot(genes) +
+  aes(Condition1, Condition2, col=State) +
+  geom_point() +
+  scale_color_manual(values=c("blue", "grey","red"))
+
+p
+```
+To annotate our plot by assigning the title, x- and y-axes names, we keep adding `(+)` arguments. This time we use `labs()` function for that. 
+
+```{r}
+p + labs(title="look at me")
+```
+
+
+Adding labels example by using `ggrepel` package. It will help annotate data points with their labels pointing away from each other, making the plot clearer. We can also specify how many datapoints we want to visualize and add the label to.
+
+```{r}
+library(ggrepel)
+
+ggplot(genes) +
+  aes(Condition1, 
+      Condition2, 
+      col=State, 
+      label=Gene) +
+  geom_point() +
+  scale_color_manual(values=c("blue", "grey","red")) + 
+  labs( title="Gene expression changes upon drug treatment",
+        x="Control (no drug)",
+        y="Drug treatment") +
+  geom_text_repel(max.overlaps = 30) +
+  theme_bw()
+```
+
+## Going further
+
+In this example, we are using gapminder dataset available online.
+
+```{r}
+# File location online
+url <- "https://raw.githubusercontent.com/jennybc/gapminder/master/inst/extdata/gapminder.tsv"
+
+gapminder <- read.delim(url)
+gapminder
+
+```
+Install "dplyr" into the console.
+
+```{r}
+library("dplyr")
+```
+
+```{r}
+
+head(gapminder)
+tail(gapminder)
+
+```
+Plotting the data. We can use `size` arugment here to specify population differentiation via the size. Also, we can adjust alpha in geom_point so that the size of the circles differs. Facet_wrap will help us compare different continents in the given x and y variables.
+
+```{r}
+
+ggplot(gapminder) +
+  aes(gdpPercap, 
+      lifeExp,
+      col=continent,
+      size=pop) +
+  geom_point(alpha=0.2)  + 
+  facet_wrap(~continent) + 
+  theme_bw()
+
+```
+We can play with the order of graphs by using | and / signs.
+
+```{r}
+library(patchwork)
+p1 <- ggplot(mtcars) + 
+  geom_point(aes(mpg, disp))
+
+p2 <- ggplot(mtcars) + 
+  geom_point(aes(gear, disp, group = gear))
+
+p1 | p2
+p2 | p1
+```
+
