@@ -1,0 +1,121 @@
+---
+title: "Class 06: R Functions Lab"
+author: "Selma Cifric (PID A69042976)"
+format: pdf
+toc: TRUE
+---
+
+# Q1
+
+>Q1. Write a function grade() to determine an overall grade from a vector of student homework assignment scores dropping the lowest single score. If a student misses a homework (i.e. has an NA value) this can be used as a score to be potentially dropped. Your final function should be adquately explained with code comments and be able to work on an example class gradebook such as this one in CSV format: “https://tinyurl.com/gradeinput”
+
+```{r}
+#First I will access the url and call that data set grades
+
+url <- "https://tinyurl.com/gradeinput"
+grades<- read.csv(url)
+grades
+
+# My goal for Q1: find the lowest score (or NA) then drop it, calculate the 
+# average of scores and then turn it into a grade. First, function `grade()` is a
+# function that takes in students' scores. Using function `min()` will find the 
+# smallest numeric score. It will find its position in the vector 
+# [which(scores == min(...))] and take the first time smallest score occurs and
+# label it as NA (... <- NA). na.rm=TRUE means that the function will ignore 
+# already existing NAs.
+
+grade <- function(scores) {  
+  scores[which(scores == min(scores, na.rm = TRUE))[1]] <- NA
+
+
+# To find an average score after dropping the lowest score, while ignoring NAs, 
+# we use simple `mean()` function:
+
+  avg <- mean(scores, na.rm = TRUE)
+
+# Now that we have dropped the lowest score and averaged the rest, we can assign 
+# letter grades with `if()` and `else()` loops. In case the student did not have
+# any numeric scores, just NAs, in that case our average is missing and final 
+# grade letter for the student is NA. To check if the average is missing we can 
+# use `is.na(avg)` and if true, then print "NA".
+
+   letter <- if (is.na(avg)) NA else
+    if (avg >= 90) "A" else
+    if (avg >= 80) "B" else
+    if (avg >= 70) "C" else
+    if (avg >= 60) "D" else "F"
+
+# Now, to combine average score (after dropping the lowest one) which is found 
+# in avg vector, with letter grade assigned for that average score, found in 
+# letter grade object, we make a new `return()` vector. It will give us an 
+# average score and letter grade for each student.
+
+return(c(average_score = avg, grade = letter)) }
+
+# Finally, I want to apply the function of grade on my data set so that every 
+# student has an average score and letter grade. Function `t(apply()` will bring
+# back student names that were dropped before with `grades[, -1]` function.
+
+grades_final <- cbind(
+  grades[, 1, drop = FALSE],      
+  t(apply(grades[, -1], 1, grade))     
+)
+
+grades_final
+
+```
+
+# Q2
+
+>Q2. Using your grade() function and the supplied gradebook, Who is the top scoring student overall in the gradebook?
+
+First I make sure that the final average grade is a number with `str()` function. 
+
+```{r}
+
+str(grades_final)
+
+```
+
+This output tells me my average is a character, which is not good. I will convert
+chr to num first to be sure. To find a top student, I will combine `which()` and
+`max()` functions on average column in my
+final grades data set.
+
+```{r}
+grades_final$average_score <- as.numeric(grades_final$average_score)
+str(grades_final)
+
+top_student <- which.max(grades_final$average)
+cat("Top student is", top_student)
+
+```
+
+
+# Q3
+
+>Q3. From your analysis of the gradebook, which homework was toughest on students (i.e. obtained the lowest scores overall?)
+
+For this question, we are going back to the original data set. My goal is to 
+average each hw column, ignoring NA scores, and find `which()` hw has `min()` 
+score. But first, I need to drop the first column "x" because it contains 
+non-numeric values, which gives me an error.
+
+```{r}
+
+hw_score <- grades[, -1]
+hw_score_average <- colMeans(hw_score, na.rm=TRUE)
+hw_score_average
+
+```
+
+Now that I have an average of each column, I will pick the minimum score average.
+
+```{r}
+
+toughest_hw <- hw_score_average[which.min(hw_score_average)]
+toughest_hw
+
+```
+
+

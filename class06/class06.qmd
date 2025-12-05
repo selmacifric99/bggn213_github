@@ -1,0 +1,152 @@
+---
+title: "class06"
+author: "Selma Cifric (PID A69042976)"
+format: pdf
+toc: true
+---
+All functions in R have at least 3 things:
+- A **name**, **arguments**, and **body**
+
+#First silly function
+
+```{r}
+add <- function(x, y=1) {
+  x + y
+}
+```
+
+now, call function
+
+```{r}
+add(c(10, 10), 100)
+```
+
+## Second function
+
+Write a function to generat erandom nucleotide sequences of a user specific length:
+
+The `sample()` function can be helpful here. Replace within the function = TRUE vs FALSE
+
+```{r}
+v <- sample(c("A", "C", "G", "T"), size=50, replace = TRUE)
+```
+
+I want a 1 element long character vector that looks like a string and not "a" "c" "t".. but ACT. We use `paste` function where collapse="" will pull the elements into a string. I could also do collapse="--SC--" and it would use this as my spacings
+
+
+```{r}
+
+paste(v, collapse = "")
+```
+
+Generate a function to combine both of codes above
+
+```{r}
+generate_dna <- function(size=5) {
+  v <- sample(c("A", "C", "G", "T"), size=size, replace = TRUE)
+  paste(v, collapse = "")
+}
+```
+
+
+```{r}
+generate_dna(60)
+```
+
+IF and ELSE functions
+
+```{r}
+fasta <- TRUE
+if(fasta) {
+  cat("HELLO You!")
+} else {
+  cat("No you dont!")
+}
+
+```
+
+Add the ability to return a multi-element vector or a single element fasta like vector.
+
+```{r}
+generate_fasta <- function(size=50, fasta=TRUE) {
+  v <- sample(c("A", "C", "G", "T"), size=size, replace = TRUE)
+  s <- (paste(v, collapse = ""))
+  
+  if(fasta) {
+    return(s)
+  } else {
+    return(v)
+  }
+}
+
+```
+
+```{r}
+generate_fasta(100, FALSE)
+```
+
+## A protein generating function
+
+```{r}
+
+generate_protein <- function(size=50, fasta=TRUE) {
+  v <- sample(c("A", "R", "N", "D", "C", "Q", "E", "G", "H", "I", 
+                "L", "K", "M", "F", "P", "S", "T", "W", "Y", "V"), 
+              size=size, replace=TRUE)
+  s <- paste(v, collapse = "")
+  
+  if(fasta) {
+    return(s)
+  } else {
+    return(v)
+  }
+}
+
+```
+
+```{r}
+generate_protein(6)
+```
+
+Use our new `generate_protein()` function to make random protein sequences of lenght 6-12 (i.e. one length 6, one length 7, etc up to length 12)
+
+One way is to:
+
+```{r}
+
+generate_protein(6)
+generate_protein(7)
+generate_protein(8)
+generate_protein(9)
+
+```
+
+OR use FOR loop `for()` loop:
+
+```{r}
+lengths <-  6:12
+lengths
+
+```
+
+```{r}
+for(i in lengths) {
+  cat(">", i, " ")
+  aa <- generate_protein(i)
+  cat(aa)
+  cat("\n")
+}
+generate_protein()
+```
+
+A third, and better, way to solve this is to use the `apply()` family of functions, specifically the `sapply()` function in this case.
+
+```{r}
+help(sapply)
+
+sapply(6:12, generate_protein)
+
+```
+
+
+

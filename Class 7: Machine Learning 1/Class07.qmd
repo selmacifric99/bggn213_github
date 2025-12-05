@@ -1,0 +1,229 @@
+---
+title: "Class 7: Machine Learning 1"
+author: "Selma Cifric (PID A69042976)"
+format: pdf
+---
+## Machine Learning Introduction
+
+Today, we explore "classical" machine learning approaches. We will start with clustering.
+
+We will make up data to cluster where we known what the answer should be.
+
+```{r}
+hist(rnorm(100))
+```
+
+```{r}
+x <- c( rnorm(30, mean = -3), rnorm(30, mean = 3) )
+y <- rev(x)
+
+x <- cbind(x,y)
+head(x)
+```
+We can plot x now with `plot()`:
+
+```{r}
+plot(x)
+```
+The main function in "base" R for K-means clustering is called `kmeans()`
+
+```{r}
+k <- kmeans(x, centers = 2)
+```
+
+
+>Q. How big are the clusters (i.e. their size)?
+
+```{r}
+k$size
+```
+This tells us that we have two clusters, each containing 30 points.
+
+>Q. What clusters do my data points reside in?
+
+```{r}
+k$cluster
+```
+
+Automatically, 1s are assigned to cluster 1 and 2s are assigned to cluster 2.
+
+>Q. Make a plot of our data colored by cluster assignment (i.e. Make a result figure).
+
+```{r}
+plot(x, col = k$cluster)
+points(k$centers, col="blue", pch=15)
+```
+
+>Q. Cluster with k-means into 4 clusters and plot your results.
+
+```{r}
+new <- kmeans(x, centers = 4)
+new
+
+plot(x, col = new$cluster)
+points(new$centers, col="blue", pch=15)
+```
+
+>Q. Run kmeans with center (i.e. values of k=1:6)
+
+```{r}
+new$tot.withinss
+
+new1 <- kmeans(x, centers=1)$tot.withinss
+new2 <- kmeans(x, centers=2)$tot.withinss
+new3 <- kmeans(x, centers=3)$tot.withinss
+new4 <- kmeans(x, centers=4)$tot.withinss
+new5 <- kmeans(x, centers=5)$tot.withinss
+new6 <- kmeans(x, centers=6)$tot.withinss
+
+ans <- c(new1, new2, new3, new4, new5, new6)
+```
+
+
+OR use a `for()` loop:
+
+```{r}
+
+ans <- NULL
+for (i in 1:6) {
+  ans <- c(ans, kmeans(x, centers=i)$tot.withinss)
+}
+ans
+```
+
+Then, we plot it:
+
+```{r}
+plot(ans, typ="b")
+```
+
+## Hierarchial clustering
+
+The main function is the "base" R for this is called `hclust()`
+
+```{r}
+d <- dist(x)
+hc <- hclust(d)
+hc
+```
+```{r}
+plot(hc)
+abline(h=7, col="red")
+```
+
+To obtain clusters from out `hclust()` result object **hc** we "cut" the tree to yield fifferent sub branches. For hsi we use the `cuttree()` function:
+
+```{r}
+grps <- cutree(hc, h=7)
+grps
+
+```
+
+Results figure:
+
+```{r}
+plot(x, col=grps)
+```
+
+```{r}
+library(pheatmap)
+pheatmap(x)
+```
+
+
+
+## Principal Component Analysis (PCA)
+
+>Q1. How many rows and columns are in your new data frame named x? What R functions could you use to answer this questions?
+
+```{r}
+url <- "https://tinyurl.com/UK-foods"
+x <- read.csv(url)
+dim(x)
+```
+
+```{r}
+# View(x)
+head(x)
+```
+```{r}
+rownames(x) <- x[,1]
+x <- x[,-1]
+head(x)
+
+dim(x)
+```
+
+Alternative approach:
+
+```{r}
+x <- read.csv(url, row.names=1)
+head(x)
+```
+
+### Spotting major differences and trends
+
+```{r}
+rainbow(nrow(x))
+```
+
+
+```{r}
+barplot(as.matrix(x), beside=T, col=rainbow(nrow(x)))
+```
+
+```{r}
+barplot(as.matrix(x), beside=F, col=rainbow(nrow(x)))
+
+```
+
+>Q5: We can use the `pairs()` function to generate all pairwise plots for our countries. Can you make sense of the following code and resulting figure? What does it mean if a given point lies on the diagonal for a given plot?
+
+```{r}
+pairs(x, col=rainbow(nrow(x)), pch=16)
+```
+If a point lies off the diagonal line, it means it's more present in one variable over the other, whichever axis its closer to.
+
+```{r}
+pheatmap(as.matrix(x))
+```
+>Q6. Based on the pairs and heatmap figures, which countries cluster together and what does this suggest about their food consumption patterns? Can you easily tell what the main differences between N. Ireland and the other countries of the UK in terms of this data-set?
+
+While we do see similarities between Wales and England, it is quite difficult to tell what is going on in the dataset.
+
+## PCA to the rescue
+
+The main function in "base" R for PCA is called `prcomp()`. We want to look at the foods data so we can transpose our data frame with `t(x)` to get the foods in the columns, then run PCA code.
+
+```{r}
+pca <- prcomp( t(x) )
+summary(pca)
+```
+
+Our result object is called `pca`, which is a list object and can be called with a `$x` component.
+
+```{r}
+pca$x
+```
+
+We want to plot PC1 (x-axis) and PC2 (y-axis):
+
+```{r}
+library(ggplot2)
+
+cols <- c("orange","red","blue","darkgreen")
+ggplot(pca$x) +
+  aes(PC1, PC2, label=rownames(pca$x)) +
+  geom_point(col=cols) +
+  geom_text(vjust = -0.5)
+```
+
+Another major result of PCA is the so-called "variable loadings" or `$rotation` that tells us how the original variables (foods) contribute to the new axis (PCs).
+
+```{r}
+ggplot(pca$rotation) + 
+  aes(PC1, rownames(pca$rotation)) +
+  geom_col()
+
+```
+0 in PCA plots means average, and movement in +direction means that variable is more dominant for that group.

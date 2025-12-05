@@ -1,0 +1,337 @@
+---
+title: "Class 9: Structural Bioinformatics pt. 1"
+author: "Selma Cifric (PID A69042976)"
+format: pdf
+toc: TRUE
+---
+
+## The PDB format
+
+The main repository for biomolecular structure data is the Protein Data Bank (PDB) https://www.rcsb.org
+
+Let's have a quick look at the composition of this database:
+
+```{r}
+raw.data <- "Data Export Summary.csv"
+protein.df <- read.csv(raw.data)
+```
+
+```{r}
+protein.df
+```
+We can substitute a comma with a space to change the chr to number.
+
+```{r}
+as.numeric(sub(",", "", protein.df$X.ray) )
+```
+
+This is annoying, let's try a different import function from the **reaadr** package. We install this package into our console.
+
+```{r}
+library(readr)
+stats <- read_csv("Data Export Summary.csv")
+stats
+```
+
+>Q1: What percentage of structures in the PDB are solved by X-Ray and Electron Microscopy.
+
+Percent x-ray
+```{r}
+n.total <- sum(stats$Total)
+n.xray <- sum(stats$`X-ray`)
+
+round((n.xray/n.total)*100, digits = 2)
+```
+
+81.43% of structures in the PDB are solved by X-Ray.
+
+Percent EM
+```{r}
+n.em <- sum(stats$EM)
+round((n.em/n.total)*100, digits = 2)
+```
+
+12.27% of structures in the PDB are solved by EM.
+
+>Q2: What proportion of structures in the PDB are protein?
+
+```{r}
+n.prot <- sum(stats$Total[1])
+row.total <- sum(stats$Total)
+round((n.prot/row.total)*100, digits = 2)
+```
+
+86.05% of structures in the PDB are protein.
+
+>Q3: Type HIV in the PDB website search box on the home page and determine how many HIV-1 protease structures are in the current PDB?
+
+As of November 1 2025 there are 1150 structures of HIV-1 proteases (no filters applied).
+
+## OPTIONAL - extra credit - generating a plot
+
+```{r}
+library(ggplot2)
+
+ggplot(stats) +
+  aes(reorder(`Molecular Type`, - Total), Total, fill = `Molecular Type`) +
+  geom_col() +
+  labs(x = "Molecular Type", y = "Total", title = "PDB structures") +
+  theme(axis.text.x = element_text (angle = 45, hjust = 1))
+```
+
+Converting wide to long data frame:
+
+```{r}
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(forcats)
+
+# Convert to long format and clean up the data
+data_long <- stats %>%
+  pivot_longer(
+    cols = -c(`Molecular Type`, Total), 
+    names_to = "experimental_method",
+    values_to = "count"
+  ) %>%
+  mutate(
+    count = as.numeric(gsub(",", "", count))
+  ) %>%
+  select(-Total)
+
+# Calculate total for each Molecular Type and reorder
+data_long <- data_long %>%
+  group_by(`Molecular Type`) %>%
+  mutate(total = sum(count)) %>%
+  ungroup() %>%
+  mutate(`Molecular Type` = fct_reorder(`Molecular Type`, total, .desc = TRUE))
+
+colors <- c("X-ray" = "#FF69B4",
+            "Other" = "#B19CD9", 
+            "NMR" = "#00BFFF",
+            "Neutron" = "#00CED1",
+            "Multiple methods" = "#90EE90",
+            "Integrative" = "#DAA520",
+            "EM" = "#FF6B6B")
+
+# Create the plot
+ggplot(data_long, aes(x = `Molecular Type`, y = count, fill = experimental_method)) +
+  geom_col() +
+  scale_fill_manual(values = colors) +
+  scale_y_continuous(labels = scales::comma_format(), 
+                     breaks = seq(0, 220000, 50000)) +
+  labs(
+    title = "PDB Structures by Molecular Type and Experimental Method",
+    x = NULL,
+    y = "Number of Structures",
+    fill = "Experimental Method"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 11),
+    axis.text.y = element_text(size = 11),
+    axis.title.y = element_text(size = 12, angle = 90),
+    plot.title = element_text(size = 14, face = "bold"),
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 11),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+```
+
+## Visualizing structure data
+
+The Mol* viewer is embeded in many bioinformatics websites https://molstar.org/viewer/. 
+
+I can insert any figure or image file using markdown format.
+
+![](1HSG.png)
+
+>Q4: Water molecules normally have 3 atoms. Why do we see just one atom per water molecule in this structure?
+
+Hydrogen is a small and ligh element, not easily picked up by X-ray crystallography which is why it does not show in H2O structure. Oxygen, on the other hand, is heavier element and shows up in biological structures on PDB.
+
+>Q5: There is a critical “conserved” water molecule in the binding site. Can you identify this water molecule? What residue number does this water molecule have
+
+Yes, its HOH 306 shown as a single red ball in the picture below.
+
+>Q6: Generate and save a figure clearly showing the two distinct chains of HIV-protease along with the ligand. You might also consider showing the catalytic residues ASP 25 in each chain and the critical water (we recommend “Ball & Stick” for these side-chains). Add this figure to your Quarto document.
+
+
+![](1HSGwater.png)
+
+## Bio3D package for structural bioinformatics
+
+We can use the bio3d package to read an analyze biomolecular data in R:
+
+```{r}
+library(bio3d)
+
+hiv <- read.pdb("1HSG")
+hiv
+```
+>Q7: How many amino acid residues are there in this pdb object? 
+
+There is 198 amino acid residues/Calpha atoms.
+
+>Q8: Name one of the two non-protein residues? 
+
+HOH 127 and MK1 1.
+
+>Q9: How many protein chains are in this structure?
+
+Two, chains A and B.
+
+```{r}
+head(hiv$atom)
+```
+
+Let's get the sequence.
+
+```{r}
+pdbseq(hiv)
+```
+
+Let's trim to chain A and get just it's sequence:
+
+```{r}
+chainA <- trim.pdb(hiv, chain="A")
+chainA.seq <- pdbseq(chainA)
+```
+
+Let's blast chain A.
+
+```{r blast_hiv, cache=TRUE}
+library(forcats)
+blast <- blast.pdb(chainA.seq)
+
+```
+
+```{r}
+head(blast$hit.tbl)
+```
+
+Plot a quick overview of blast results.
+
+```{r}
+hits <- plot(blast)
+```
+
+```{r}
+hits$pdb.id
+```
+
+## Prediction of functional motions
+
+We can run a Normal Mode Analysis (NMA) to predict large scale motions/flexibility/dynamics of any biomolecule that we can read into R.
+
+Let's look ADK and chain A only.
+
+```{r}
+adk <- read.pdb("1ake")
+adk_A <- trim.pdb(adk, chain="A")
+adk_A
+```
+
+```{r}
+m <- nma(adk_A)
+plot(m)
+```
+
+Let's write out a "trajectory" of predicted motion.
+
+```{r}
+mktrj(m, file="adk_nma.pdb")
+```
+
+## Play with 3D viewing in R
+
+We can use the new **bio3Dview** package, which is not yet on CRAN, to render interactive 3D views in R and HTML quarto output reports. To install from GitHub we can use the **pak** package. We install it in the console.
+
+# Install packages in the R console NOT your Rmd/Quarto file
+
+#install.packages("bio3d")
+#install.packages("devtools")
+#install.packages("BiocManager")
+
+#BiocManager::install("msa")
+#devtools::install_bitbucket("Grantlab/bio3d-view")
+
+>Q10. Which of the packages above is found only on BioConductor and not CRAN? 
+
+msa
+
+>Q11. Which of the above packages is not found on BioConductor or CRAN?: 
+
+bio3d-view
+
+>Q12. True or False? Functions from the devtools package can be used to install packages from GitHub and BitBucket? 
+
+True
+```{r}
+library(bio3d)
+library(bio3d.view)
+library(devtools)
+library(BiocManager)
+library(msa)
+
+aa <- get.seq("1ake_A")
+
+```
+
+## Comparative analysis of protein structures
+
+Starting with a sequence or structure ID (accession number) let's run a complete analysis.
+
+```{r}
+library(bio3d)
+library(bio3d.view)
+library(devtools)
+library(BiocManager)
+library(msa)
+
+id<- "1ake_A"
+aa<- get.seq(id)
+aa
+
+```
+
+
+```{r, cache = TRUE}
+blast <- blast.pdb(aa)
+hits <- plot(blast)
+```
+
+```{r}
+hits$pdb.id
+```
+
+Download all these hits that are similar to our starting ID sequence.
+
+```{r}
+# Download releated PDB files
+files <- get.pdb(hits$pdb.id, path="pdbs", split=TRUE, gzip=TRUE)
+```
+
+```{r}
+# Align releated PDBs
+pdbs <- pdbaln(files, fit = TRUE, exefile="msa")
+```
+
+```{r}
+pc.xray <- pca(pdbs)
+plot(pc.xray)
+```
+
+```{r}
+mktrj(pc.xray, file="pca_results.pdb")
+```
+
+```{r}
+library(bio3dview)
+view.pca(pc.xray)
+```
+
+
